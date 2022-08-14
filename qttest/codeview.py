@@ -1,12 +1,9 @@
-import logging
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 
 class Token:
-    def __init__(self, text, type=None, data=None):
+    def __init__(self, text):
         self.text = text
-        self.type = type
-        self.data = data
 
 
 def prop(default):
@@ -50,9 +47,6 @@ class WordHighlighter(QtGui.QSyntaxHighlighter):
 
 class CodeViewWidget(QtWidgets.QTextEdit):
     defaultColor = prop(QtGui.QColor("black"))
-    typeColor = prop(QtGui.QColor("blue"))
-    identColor = prop(QtGui.QColor("green"))
-    numColor = prop(QtGui.QColor("red"))
     highlightColor = prop(QtGui.QColor("yellow"))
 
     def __init__(self):
@@ -63,52 +57,41 @@ class CodeViewWidget(QtWidgets.QTextEdit):
             self.textInteractionFlags() | QtCore.Qt.TextSelectableByKeyboard
         )
         self.viewport().setCursor(QtCore.Qt.CursorShape.ArrowCursor)
-        self.set_content()
         self.highlighter = WordHighlighter(self.document(), self.highlightColor)
         self.cursorPositionChanged.connect(self.on_cursor_position_changed)
+        self.lines = []
 
     def changeEvent(self, e):
         if e.type() == QtCore.QEvent.StyleChange:
             self.highlighter = WordHighlighter(self.document(), self.highlightColor)
-            self.set_content()
+            self.update_text()
         else:
             super().changeEvent(e)
 
-    def set_content(self):
-        lines = [
-            [Token("int", "type"), Token(" "), Token("main", "ident"), Token("() {")],
-            [Token("    // return return return")],
-            [Token("    return "), Token("123", "num"), Token(";")],
-            [Token("}")],
-        ]
+    def set_content(self, lines):
+        self.lines = lines
+        self.update_text()
 
+    def update_text(self):
         self.tokens = []
         self.clear()
 
-        for line in lines:
+        for line in self.lines:
             for token in line:
                 if token.type is not None:
                     pos = self.textCursor().position()
-                    self.tokens.append(((pos, pos + len(token.text)), token.data))
-                    self.setTextColor(self.token_color(token.type))
+                    self.tokens.append(((pos, pos + len(token.text)), token))
+                    self.setTextColor(self.token_color(token))
                 else:
                     self.setTextColor(self.defaultColor)
                 self.insertPlainText(token.text)
             self.insertPlainText("\n")
 
-    def token_color(self, token_type):
-        return {
-            "type": self.typeColor,
-            "ident": self.identColor,
-            "num": self.numColor,
-        }.get(token_type, self.defaultColor)
+    def token_color(self, token):
+        return self.defaultColor
 
     def on_cursor_position_changed(self):
         self.highlight_word_under_cursor()
-
-        token = self.token_at(self.textCursor().position())
-        if token is not None:
-            logging.info(token)
 
     def highlight_word_under_cursor(self):
         cursor = self.textCursor()

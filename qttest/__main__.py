@@ -1,9 +1,9 @@
 import logging
 import sys
-from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5 import QtCore, QtWidgets
 from PyQtAds import ads
 
-from .codeview import CodeViewWidget
+from .decompiler import DecompilerWidget
 
 
 class Handler(logging.Handler):
@@ -59,7 +59,7 @@ class MainWindow(QtWidgets.QMainWindow):
         ads.CDockManager.setConfigFlag(ads.CDockManager.OpaqueSplitterResize, True)
         self.dock_manager = ads.CDockManager(self)
 
-        decompiler = self.register_dockable_widget("Decompiler", CodeViewWidget())
+        decompiler = self.register_dockable_widget("Decompiler", DecompilerWidget())
         functions = self.register_dockable_widget("Functions", FunctionsWidget())
         console = self.register_dockable_widget("Console", self.console)
 
@@ -116,6 +116,13 @@ def main():
     logger.setLevel(logging.INFO)
 
     app = QtWidgets.QApplication([])
+    app.setStyleSheet(
+        """
+        CodeViewWidget {
+            font-family: "Courier New";
+        }
+        """
+    )
 
     main_window = MainWindow()
     main_window.resize(800, 600)
