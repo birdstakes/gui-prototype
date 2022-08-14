@@ -1,18 +1,31 @@
+import logging
 import sys
-from PyQt5 import QtCore, QtWidgets
+from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQtAds import ads
+
+from .codeview import CodeViewWidget
+
+
+class Handler(logging.Handler):
+    def __init__(self, callback):
+        super().__init__()
+        self.callback = callback
+
+    def emit(self, record):
+        self.callback(self.format(record))
 
 
 class FunctionsWidget(QtWidgets.QWidget):
     pass
 
 
-class DecompilerWidget(QtWidgets.QWidget):
-    pass
+class ConsoleWidget(QtWidgets.QTextEdit):
+    def __init__(self):
+        super().__init__()
+        self.setReadOnly(True)
 
-
-class ConsoleWidget(QtWidgets.QWidget):
-    pass
+    def log(self, message):
+        self.append(message)
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -22,6 +35,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.settings = QtCore.QSettings(
             "settings.ini", QtCore.QSettings.Format.IniFormat
         )
+
+        self.console = ConsoleWidget()
+        logging.getLogger().addHandler(Handler(self.console.log))
 
         self.file_menu = self.menuBar().addMenu("File")
         self.view_menu = self.menuBar().addMenu("View")
@@ -41,9 +57,9 @@ class MainWindow(QtWidgets.QMainWindow):
         ads.CDockManager.setConfigFlag(ads.CDockManager.OpaqueSplitterResize, True)
         self.dock_manager = ads.CDockManager(self)
 
-        decompiler = self.register_dockable_widget("Decompiler", DecompilerWidget())
+        decompiler = self.register_dockable_widget("Decompiler", CodeViewWidget())
         functions = self.register_dockable_widget("Functions", FunctionsWidget())
-        console = self.register_dockable_widget("Console", ConsoleWidget())
+        console = self.register_dockable_widget("Console", self.console)
 
         self.dock_manager.loadPerspectives(self.settings)
         if "Default" in self.dock_manager.perspectiveNames():
@@ -94,6 +110,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
 
 def main():
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+
     app = QtWidgets.QApplication([])
 
     main_window = MainWindow()
