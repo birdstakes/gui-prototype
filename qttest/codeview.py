@@ -2,24 +2,46 @@ import logging
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 
+class Token:
+    def __init__(self, text, type=None, data=None):
+        self.text = text
+        self.type = type
+        self.data = data
+
+
+def prop(default):
+    val = [default]
+
+    def setter(self, value):
+        val[0] = value
+
+    def getter(self):
+        return val[0]
+
+    return QtCore.pyqtProperty(type(default), getter, setter)
+
+
 class WordHighlighter(QtGui.QSyntaxHighlighter):
-    def __init__(self, parent, word=None):
+    def __init__(self, parent, color):
         super().__init__(parent)
-        self.set_word(word)
+        self.color = color
+        self.regex = None
 
     def set_word(self, word):
         if word is None:
             self.regex = None
         else:
-            # TODO make sure word is properly escaped
             self.regex = QtCore.QRegularExpression(f"\\b{word}\\b")
         self.rehighlight()
+
+    def set_color(self, color):
+        self.color = color
 
     def highlightBlock(self, text):
         if self.regex is None:
             return
         fmt = QtGui.QTextCharFormat()
-        fmt.setBackground(QtGui.QColorConstants.Gray)
+        fmt.setBackground(self.color)
         matches = self.regex.globalMatch(text)
         while matches.hasNext():
             match = matches.next()
@@ -27,60 +49,91 @@ class WordHighlighter(QtGui.QSyntaxHighlighter):
 
 
 class CodeViewWidget(QtWidgets.QTextEdit):
+    defaultColor = prop(QtGui.QColor("black"))
+    typeColor = prop(QtGui.QColor("blue"))
+    identColor = prop(QtGui.QColor("green"))
+    numColor = prop(QtGui.QColor("red"))
+    highlightColor = prop(QtGui.QColor("yellow"))
+
     def __init__(self):
         super().__init__()
-
-        red = {"color": "red", "coolness": 0}
-        green = {"color": "green", "coolness": 1}
-        blue = {"color": "blue", "coolness": 2}
-
-        lines = [
-            [("int", red), (" ", None), ("main", green), ("() {", None)],
-            [("return return return", None)],
-            [("    return ", None), ("123", blue), (";", None)],
-            [("}", None)],
-        ]
-
-        self.tokens = []
-
-        # TODO does qt provide a way to programmatically generate html?
-        html = "<pre>"
-        pos = 0
-        for line in lines:
-            for token, data in line:
-                if data is not None:
-                    self.tokens.append(((pos, pos + len(token)), data))
-                    # TODO instead of style, change class based on token type and let css choose color etc.
-                    color = data["color"]
-                    html += f'<span style="color: {color}">{token}</span>'
-                else:
-                    html += f"<span>{token}</span>"
-                pos += len(token)
-            html += "\n"
-            pos += 1
-        html += "</pre>"
 
         self.setReadOnly(True)
         self.setTextInteractionFlags(
             self.textInteractionFlags() | QtCore.Qt.TextSelectableByKeyboard
         )
-        self.setHtml(html)
+        self.viewport().setCursor(QtCore.Qt.CursorShape.ArrowCursor)
+        self.set_content()
+        self.highlighter = WordHighlighter(self.document(), self.highlightColor)
+        self.cursorPositionChanged.connect(self.on_cursor_position_changed)
 
-        self.highlighter = WordHighlighter(self.document())
+    def changeEvent(self, e):
+        if e.type() == QtCore.QEvent.StyleChange:
+            self.highlighter = WordHighlighter(self.document(), self.highlightColor)
+            self.set_content()
+        else:
+            super().changeEvent(e)
 
-        def f():
-            cursor = self.textCursor()
-            cursor.select(QtGui.QTextCursor.SelectionType.WordUnderCursor)
-            self.highlighter.set_word(cursor.selectedText())
+    def set_content(self):
+        lines = [
+            [Token("int", "type"), Token(" "), Token("main", "ident"), Token("() {")],
+            [Token("    // return return return")],
+            [Token("    return "), Token("123", "num"), Token(";")],
+            [Token("}")],
+        ]
 
-            token = self.token_at(self.textCursor().position())
-            if token is not None:
-                logging.info(token)
+        self.tokens = []
+        self.clear()
 
-        self.cursorPositionChanged.connect(f)
+        for line in lines:
+            for token in line:
+                if token.type is not None:
+                    pos = self.textCursor().position()
+                    self.tokens.append(((pos, pos + len(token.text)), token.data))
+                    self.setTextColor(self.token_color(token.type))
+                else:
+                    self.setTextColor(self.defaultColor)
+                self.insertPlainText(token.text)
+            self.insertPlainText("\n")
+
+    def token_color(self, token_type):
+        return {
+            "type": self.typeColor,
+            "ident": self.identColor,
+            "num": self.numColor,
+        }.get(token_type, self.defaultColor)
+
+    def on_cursor_position_changed(self):
+        self.highlight_word_under_cursor()
+
+        token = self.token_at(self.textCursor().position())
+        if token is not None:
+            logging.info(token)
+
+    def highlight_word_under_cursor(self):
+        cursor = self.textCursor()
+        cursor.select(QtGui.QTextCursor.SelectionType.WordUnderCursor)
+        word = cursor.selectedText()
+        if word.isalnum():
+            self.highlighter.set_word(word)
+        else:
+            self.highlighter.set_word(None)
 
     def token_at(self, pos):
-        for span, token in self.tokens:
-            if span[0] <= pos < span[1]:
-                return token
+        lo, hi = 0, len(self.tokens)
+        while lo < hi:
+            mid = (lo + hi) // 2
+            span, _ = self.tokens[mid]
+            if pos < span[0]:
+                hi = mid
+            else:
+                lo = mid + 1
+
+        if lo == 0:
+            return None
+
+        span, token = self.tokens[lo - 1]
+        if span[0] <= pos < span[1]:
+            return token
+
         return None
