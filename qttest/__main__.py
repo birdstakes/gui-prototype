@@ -47,6 +47,8 @@ class MainWindow(QtWidgets.QMainWindow):
             action.triggered.connect(function)
             menu.addAction(action)
 
+        add_menu_item(self.file_menu, "Exit", QtWidgets.QApplication.quit)
+
         self.init_layout()
 
         self.view_menu.addSeparator()
