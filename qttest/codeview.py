@@ -94,10 +94,18 @@ class CodeViewWidget(QtWidgets.QTextEdit):
         self.highlight_word_under_cursor()
 
     def highlight_word_under_cursor(self):
+        is_word = lambda s: all(c.isalnum() or c == "_" for c in s)
+
         cursor = self.textCursor()
+
+        char = self.document().characterAt(cursor.position())
+        if char is None or not is_word(char):
+            self.highlighter.set_word(None)
+            return
+
         cursor.select(QtGui.QTextCursor.SelectionType.WordUnderCursor)
         word = cursor.selectedText()
-        if word.isalnum():
+        if is_word(word):
             self.highlighter.set_word(word)
         else:
             self.highlighter.set_word(None)
