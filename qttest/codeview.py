@@ -78,12 +78,9 @@ class CodeViewWidget(QtWidgets.QTextEdit):
 
         for line in self.lines:
             for token in line:
-                if token.type is not None:
-                    pos = self.textCursor().position()
-                    self.tokens.append(((pos, pos + len(token.text)), token))
-                    self.setTextColor(self.token_color(token))
-                else:
-                    self.setTextColor(self.defaultColor)
+                pos = self.textCursor().position()
+                self.tokens.append(((pos, pos + len(token.text)), token))
+                self.setTextColor(self.token_color(token))
                 self.insertPlainText(token.text)
             self.insertPlainText("\n")
 
