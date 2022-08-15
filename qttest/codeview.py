@@ -63,7 +63,7 @@ class CodeViewWidget(QtWidgets.QTextEdit):
 
     def changeEvent(self, e):
         if e.type() == QtCore.QEvent.StyleChange:
-            self.highlighter = WordHighlighter(self.document(), self.highlightColor)
+            self.highlighter.set_color(self.highlightColor)
             self.update_text()
         else:
             super().changeEvent(e)
