@@ -1,13 +1,26 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 
-from .tokensview import TokensViewWidget, prop
+from .tokensview import TokensViewWidget
 
 
 class CodeViewWidget(TokensViewWidget):
     def __init__(self):
         super().__init__()
+
+        settings = QtCore.QSettings()
+        self.colors = {
+            "default": settings.value("codeview/default", QtGui.QColor("black")),
+            "ident": settings.value("codeview/ident", QtGui.QColor("green")),
+            "num": settings.value("codeview/num", QtGui.QColor("red")),
+            "opcode": settings.value("codeview/opcode", QtGui.QColor("darkorange")),
+            "type": settings.value("codeview/type", QtGui.QColor("blue")),
+        }
+
         self.analysis = None
         self.function = None
+
+    def token_color(self, token):
+        return self.colors.get(token.type, self.colors["default"])
 
     def update(self, function):
         raise NotImplementedError
@@ -42,35 +55,10 @@ class CodeViewWidget(TokensViewWidget):
 
 
 class DecompilerWidget(CodeViewWidget):
-    typeColor = prop(QtGui.QColor("blue"))
-    identColor = prop(QtGui.QColor("green"))
-    numColor = prop(QtGui.QColor("red"))
-
     def update(self, function):
         self.set_content(self.function.decompilation())
 
-    def token_color(self, token):
-        return {
-            "type": self.typeColor,
-            "ident": self.identColor,
-            "num": self.numColor,
-        }.get(token.type, self.defaultColor)
-
 
 class DisassemblyWidget(CodeViewWidget):
-    defaultColor = prop(QtGui.QColor("grey"))
-    typeColor = prop(QtGui.QColor("blue"))
-    identColor = prop(QtGui.QColor("green"))
-    numColor = prop(QtGui.QColor("red"))
-    opcodeColor = prop(QtGui.QColor("darkorange"))
-
     def update(self, function):
         self.set_content(self.function.disassembly())
-
-    def token_color(self, token):
-        return {
-            "type": self.typeColor,
-            "ident": self.identColor,
-            "num": self.numColor,
-            "opcode": self.opcodeColor,
-        }.get(token.type, self.defaultColor)

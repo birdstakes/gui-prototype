@@ -1,20 +1,8 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 
-def prop(default):
-    val = [default]
-
-    def setter(self, value):
-        val[0] = value
-
-    def getter(self):
-        return val[0]
-
-    return QtCore.pyqtProperty(type(default), getter, setter)
-
-
 class WordHighlighter(QtGui.QSyntaxHighlighter):
-    def __init__(self, parent, color):
+    def __init__(self, parent, color=QtGui.QColor("yellow")):
         super().__init__(parent)
         self.color = color
         self.regex = None
@@ -41,9 +29,6 @@ class WordHighlighter(QtGui.QSyntaxHighlighter):
 
 
 class TokensViewWidget(QtWidgets.QTextEdit):
-    defaultColor = prop(QtGui.QColor("black"))
-    highlightColor = prop(QtGui.QColor("yellow"))
-
     def __init__(self):
         super().__init__()
 
@@ -52,16 +37,9 @@ class TokensViewWidget(QtWidgets.QTextEdit):
             self.textInteractionFlags() | QtCore.Qt.TextSelectableByKeyboard
         )
         self.viewport().setCursor(QtCore.Qt.CursorShape.ArrowCursor)
-        self.highlighter = WordHighlighter(self.document(), self.highlightColor)
+        self.highlighter = WordHighlighter(self.document())
         self.cursorPositionChanged.connect(self.on_cursor_position_changed)
         self.lines = []
-
-    def changeEvent(self, e):
-        if e.type() == QtCore.QEvent.StyleChange:
-            self.highlighter.set_color(self.highlightColor)
-            self.update_text()
-        else:
-            super().changeEvent(e)
 
     def set_content(self, lines):
         self.lines = lines
@@ -87,7 +65,7 @@ class TokensViewWidget(QtWidgets.QTextEdit):
             self.setTextCursor(cursor)
 
     def token_color(self, token):
-        return self.defaultColor
+        return QtGui.QColor("black")
 
     def on_cursor_position_changed(self):
         self.highlight_word_under_cursor()
