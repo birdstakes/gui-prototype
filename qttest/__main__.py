@@ -57,10 +57,6 @@ class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.settings = QtCore.QSettings(
-            "settings.ini", QtCore.QSettings.Format.IniFormat
-        )
-
         self.init_widgets()
 
         self.file_menu = self.menuBar().addMenu("File")
@@ -107,7 +103,7 @@ class MainWindow(QtWidgets.QMainWindow):
         console = self.register_dockable_widget("Console", self.console)
         self.register_dockable_widget("Disassembly", self.disassembly)
 
-        self.dock_manager.loadPerspectives(self.settings)
+        self.dock_manager.loadPerspectives(QtCore.QSettings())
         if "Default" in self.dock_manager.perspectiveNames():
             self.dock_manager.openPerspective("Default")
         else:
@@ -126,7 +122,7 @@ class MainWindow(QtWidgets.QMainWindow):
             console.toggleView(True)
 
             self.dock_manager.addPerspective("Default")
-            self.dock_manager.savePerspectives(self.settings)
+            self.dock_manager.savePerspectives(QtCore.QSettings())
 
     def register_dockable_widget(self, name, widget):
         dock_widget = ads.CDockWidget(name)
@@ -142,7 +138,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.goto.emit(analysis.functions()[0])
 
     def load_layout(self):
-        self.dock_manager.loadPerspectives(self.settings)
+        self.dock_manager.loadPerspectives(QtCore.QSettings())
         name, ok = QtWidgets.QInputDialog.getItem(
             self,
             "Load layout",
@@ -157,7 +153,7 @@ class MainWindow(QtWidgets.QMainWindow):
         name, ok = QtWidgets.QInputDialog.getText(self, "Save layout", "Name:")
         if ok:
             self.dock_manager.addPerspective(name)
-            self.dock_manager.savePerspectives(self.settings)
+            self.dock_manager.savePerspectives(QtCore.QSettings())
 
 
 def main():
@@ -165,6 +161,14 @@ def main():
     logger.setLevel(logging.INFO)
 
     app = QtWidgets.QApplication([])
+
+    QtCore.QSettings.setPath(
+        QtCore.QSettings.Format.IniFormat,
+        QtCore.QSettings.Scope.UserScope,
+        "settings",
+    )
+    QtCore.QSettings.setDefaultFormat(QtCore.QSettings.Format.IniFormat)
+
     app.setStyleSheet(
         """
         CodeViewWidget {
